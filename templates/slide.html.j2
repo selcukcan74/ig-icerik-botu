@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?{{ d.google_fonts }}&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: {{ c.bg }}; --surface: {{ c.surface }}; --text: {{ c.text }};
+    --muted: {{ c.muted }}; --accent: {{ c.accent }}; --accent-text: {{ c.accent_text }};
+    --fh: "{{ d.fonts.heading }}", system-ui, sans-serif;
+    --fb: "{{ d.fonts.body }}", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: {{ d.width }}px; height: {{ d.height }}px; }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--fb);
+    -webkit-font-smoothing: antialiased; overflow: hidden; position: relative;
+  }
+  .frame { position: absolute; inset: 0; padding: 96px 88px 88px; display: flex; flex-direction: column; }
+  .grain { position: absolute; inset: 0; pointer-events: none; opacity: .5;
+    background:
+      radial-gradient(900px 700px at 110% -10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%),
+      radial-gradient(700px 600px at -20% 120%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%);
+  }
+  .top { display: flex; justify-content: space-between; align-items: center; }
+  .eyebrow {
+    font-family: var(--fh); font-weight: 500; font-size: 30px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent);
+  }
+  .brand { font-family: var(--fh); font-weight: 700; font-size: 28px; color: var(--muted); letter-spacing: .02em; }
+  .main { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 44px; }
+  h1 {
+    font-family: var(--fh); font-weight: 700; line-height: 1.02; letter-spacing: -.035em;
+    font-size: {{ title_size }}px; text-wrap: balance;
+  }
+  h1 .hl { color: var(--accent); }
+  .body { font-size: 40px; line-height: 1.42; color: color-mix(in srgb, var(--text) 82%, transparent); max-width: 880px; text-wrap: pretty; }
+  ul { list-style: none; display: flex; flex-direction: column; gap: 26px; }
+  li {
+    display: grid; grid-template-columns: 64px 1fr; align-items: start; gap: 22px;
+    font-size: 40px; line-height: 1.32; padding: 30px 34px; border-radius: 28px; background: var(--surface);
+  }
+  li .n {
+    font-family: var(--fh); font-weight: 700; font-size: 30px; width: 56px; height: 56px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--accent); color: var(--accent-text);
+  }
+  .bottom { display: flex; justify-content: space-between; align-items: center; color: var(--muted);
+    font-family: var(--fh); font-size: 28px; }
+  .swipe { display: inline-flex; align-items: center; gap: 14px; color: var(--text); }
+  .swipe .arrow { width: 64px; height: 64px; border-radius: 50%; background: var(--accent); color: var(--accent-text);
+    display: grid; place-items: center; font-size: 34px; }
+  .dots { display: flex; gap: 10px; }
+  .dots i { width: 12px; height: 12px; border-radius: 6px; background: color-mix(in srgb, var(--text) 25%, transparent); }
+  .dots i.on { width: 40px; background: var(--accent); }
+
+  /* --- slayt türleri --- */
+  .k-cover h1 { font-size: {{ title_size + 14 }}px; }
+  .k-quote .qmark { font-family: var(--fh); font-size: 220px; line-height: .6; color: var(--accent); height: 100px; }
+  .k-quote h1 { font-weight: 500; letter-spacing: -.02em; }
+  .k-cta { background: var(--accent); color: var(--accent-text); }
+  .k-cta .grain { display: none; }
+  .k-cta .eyebrow, .k-cta .brand, .k-cta .bottom { color: var(--accent-text); opacity: .75; }
+  .k-cta h1 .hl { color: var(--accent-text); text-decoration: underline; text-decoration-thickness: 10px; text-underline-offset: 14px; }
+  .k-cta .body { color: var(--accent-text); }
+  .k-cta .handle-big { font-family: var(--fh); font-weight: 700; font-size: 56px; padding: 26px 40px;
+    border: 4px solid var(--accent-text); border-radius: 999px; align-self: flex-start; }
+  .k-showcase .hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%; }
+  .k-showcase .shade { position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 52%, rgba(0,0,0,.82) 100%); }
+  .k-showcase .grain { display: none; }
+  .k-showcase .main { justify-content: flex-end; gap: 22px; padding-bottom: 36px; }
+  .k-showcase h1 { font-size: {{ [title_size - 22, 64] | max }}px; text-shadow: 0 2px 24px rgba(0,0,0,.35); }
+  .k-showcase .body { font-size: 34px; color: rgba(255,255,255,.88); }
+  .k-showcase .brand, .k-showcase .bottom { color: rgba(255,255,255,.8); }
+  .k-showcase .tag { align-self: flex-start; font-family: var(--fh); font-weight: 500; font-size: 24px; letter-spacing: .1em;
+    text-transform: uppercase; padding: 10px 18px; border-radius: 999px; background: var(--accent); color: var(--accent-text); }
+  .k-cta .dots i { background: color-mix(in srgb, var(--accent-text) 25%, transparent); }
+  .k-cta .dots i.on { background: var(--accent-text); }
+</style>
+</head>
+<body class="k-{{ s.kind }}">
+  {% if s.kind == "showcase" and image_src %}<img class="hero" src="{{ image_src }}"><div class="shade"></div>{% endif %}
+  <div class="grain"></div>
+  <div class="frame">
+    <div class="top">
+      <div class="eyebrow">{{ s.eyebrow }}</div>
+      <div class="brand">{{ brand_name }}</div>
+    </div>
+
+    <div class="main">
+      {% if s.kind == "showcase" %}<span class="tag">{{ tag_text }}</span>{% endif %}
+      {% if s.kind == "quote" %}<div class="qmark">“</div>{% endif %}
+      <h1>{{ title_html }}</h1>
+      {% if s.kind == "list" and s.bullets %}
+        <ul>
+          {% for b in s.bullets %}<li><span class="n">{{ loop.index }}</span><span>{{ b }}</span></li>{% endfor %}
+        </ul>
+      {% endif %}
+      {% if s.body %}<p class="body">{{ s.body }}</p>{% endif %}
+      {% if s.kind == "cta" %}<div class="handle-big">{{ handle }}</div>{% endif %}
+    </div>
+
+    <div class="bottom">
+      <span>{% if s.kind != "cta" %}{{ handle }}{% endif %}</span>
+      {% if total > 1 %}
+        {% if s.kind == "cover" or (index == 0 and s.kind == "showcase") %}
+          <span class="swipe">Kaydır <span class="arrow">→</span></span>
+        {% else %}
+          <span class="dots">{% for i in range(total) %}<i class="{{ 'on' if i == index else '' }}"></i>{% endfor %}</span>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

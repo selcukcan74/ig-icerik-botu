@@ -1,0 +1,102 @@
+# =========================================================
+#  Instagram İçerik Motoru — Genel Ayarlar
+#  Bu dosyayı markanıza göre düzenleyip botu yeniden başlatın.
+# =========================================================
+
+timezone: Europe/Istanbul
+
+# ---------- Marka ----------
+brand:
+  name: "MARKA_ADI"
+  handle: "@instagram_kullanici_adi"
+  language: "tr"
+  niche: "Markanın faaliyet alanını ve sunduğu ürün veya hizmetleri yazın"
+  audience: "Hedef müşterilerinizi, ihtiyaçlarını ve bulunduğunuz pazarı tanımlayın"
+  tone: "Markanın iletişim tonunu tanımlayın: ör. samimi, uzman, enerjik, sade ve profesyonel"
+  goal: "İçerik hedefini yazın: bilinirlik, etkileşim, web sitesi ziyareti, satış veya DM"
+  cta_default: "Markanıza uygun varsayılan çağrı metnini yazın"
+  # İçerik sütunları — sektörünüze göre düzenleyin.
+  pillars:
+    - "Ürün veya hizmet tanıtımı"
+    - "Hedef kitlenin sık karşılaştığı sorunlar ve çözümler"
+    - "Eğitici ve bilgilendirici içerikler"
+    - "Sık sorulan sorular"
+    - "Müşteri deneyimi, güven ve marka hikâyesi"
+  # Kaçınılacaklar
+  avoid:
+    - "Başka hesapların içeriğini birebir kopyalamak"
+    - "Doğrulanmamış istatistik / uydurma rakam"
+    - "Rakip markaları kötülemek"
+
+# ---------- Görsel stil (şablonlara aktarılır) ----------
+design:
+  width: 1080
+  height: 1350          # 4:5 dikey — feed'de en çok alan kaplayan oran
+  colors:
+    bg: "#111827"
+    surface: "#1F2937"
+    text: "#F9FAFB"
+    muted: "#9CA3AF"
+    accent: "#60A5FA"
+    accent_text: "#111827"
+  fonts:
+    heading: "Space Grotesk"
+    body: "Inter"
+  # Google Fonts'tan yüklenecek aileler
+  google_fonts: "family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600"
+
+# ---------- Yayın temposu ----------
+posting:
+  posts_per_day: 2            # 1 ya da 2
+  slots: ["12:30", "20:00"]   # posts_per_day=1 ise yalnızca ilki kullanılır
+  # Kuyruk (onay bekleyen + planlanmış) bu kadar günü doldurunca yeni fikir üretme
+  max_queue_days: 3
+
+# ---------- Fikir üretimi ----------
+ideation:
+  run_at: "12:00"             # her gün bu saatte taslak fikirleri gönderilir
+  ideas_per_run: 3            # posts_per_day=2 için 3 fikir → reddetme payı bırakır
+  carousel_ratio: 0.7         # fikirlerin ~%70'i carousel olsun
+  max_carousel_slides: 7
+  # Örnek/portföy içerikleri. İlk kurulumda kapalıdır; ihtiyaca göre açın.
+  portfolio_per_week: 0
+  portfolio_types:
+    - "Ürün veya hizmet kullanım senaryosu"
+    - "Müşteri sorunu ve çözümünü anlatan örnek"
+    - "Sektöre yönelik eğitici mini rehber"
+    - "Marka hikâyesi veya perde arkası"
+    - "Sık sorulan sorular serisi"
+
+# ---------- Tasarım örnekleri (AI görsel üretimi) ----------
+visuals:
+  enabled: true
+  model: "gpt-image-2"
+  size: "1024x1536"           # dikey; şablonda 1080x1350'ye kırpılır
+  quality: "medium"           # low | medium | high  (high daha pahalı)
+  max_per_post: 3             # gönderi başına en fazla kaç tasarım örneği üretilsin
+  max_per_portfolio: 6        # portföy gönderisinde en fazla kaç görsel
+  # Genel başlangıç stili — markanızın görsel kimliğine göre özelleştirin.
+  style: >-
+    Create polished, professional social media artwork aligned with the brand identity
+    and audience defined in this configuration. Use a clear visual hierarchy, balanced
+    composition, readable typography, intentional spacing, and the configured brand
+    colours. The result should feel distinctive, contemporary, and suitable for the
+    brand's industry rather than like a generic template.
+  rules: >-
+    Create an ORIGINAL design. Do not reproduce existing logos, trademarks or any specific reference artwork.
+    Use only fictional brand names of one or two short Latin words. Keep any in-image text minimal and spelled exactly.
+    No watermarks, no UI chrome, no people's faces unless requested.
+
+# ---------- İlham hesapları (Apify) ----------
+inspiration:
+  accounts: []  # İlham alınacak herkese açık Instagram hesaplarını @ olmadan ekleyin
+
+  posts_per_account: 12
+  scrape_every_days: 3        # Apify maliyetini düşük tutmak için 3 günde bir tara
+  top_posts_for_llm: 15       # etkileşime göre en iyi N gönderi LLM'e verilir
+  max_comments_per_post: 8
+
+# ---------- LLM (OpenAI) ----------
+llm:
+  model: "gpt-5.5"
+  reasoning_effort: "medium"   # minimal | low | medium | high (gpt-4o/4.1 için satırı sil)
