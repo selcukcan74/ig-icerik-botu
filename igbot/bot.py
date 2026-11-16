@@ -233,6 +233,71 @@ async def publish(app: Application, draft_id: int, when: Optional[datetime]) -> 
         await msg.edit_text(f"⚠️ Yayınlanamadı: {str(ex)[:400]}\nTaslak tekrar onay bekliyor.", reply_markup=design_kb(draft_id))
 
 
+# ============ Zernio durum senkronizasyonu ============
+LATE_GRACE_MIN = 20  # planlanan saatten bu kadar dakika sonra hâlâ yayında değilse uyar
+
+
+async def sync_scheduled(app: Application, notify: bool = True) -> Dict[str, List]:
+    """Saati geçmiş planlı gönderilerin Zernio'daki durumunu çekip DB'yi günceller.
+    Yayınlanmamış (hatalı ya da gecikmiş) olanlar için kullanıcıyı bilgilendirir."""
+    now = datetime.now(TZ)
+    published, failed, late = [], [], []
+    for r in db.drafts_by_status(db.SCHEDULED, db.PUBLISHING):
+        if not r["zernio_post_id"] or not r["scheduled_for"]:
+            continue
+        when = datetime.fromisoformat(r["scheduled_for"])
+        if when > now:
+            continue
+        title = json.loads(r["idea_json"]).get("title", "")
+        try:
+            info = await asyncio.to_thread(zernio.get_post, r["zernio_post_id"])
+        except Exception as ex:
+            log.warning("Zernio durum sorgusu başarısız (#%s): %s", r["id"], ex)
+            continue
+        st = (info["status"] or "").lower()
+        if st == "published":
+            db.update_draft(r["id"], status=db.PUBLISHED, permalink=info["url"] or r["permalink"])
+            published.append((r["id"], title, info["url"]))
+        elif st in ("failed", "error", "partial", "cancelled", "canceled"):
+            # Tekrar paylaşım onayına döndür → kullanıcı yeniden zamanlayabilir
+            db.update_draft(r["id"], status=db.DESIGN_PENDING, scheduled_for=None,
+                            error=info["error"] or f"Zernio durumu: {st}")
+            failed.append((r["id"], title, info["error"] or st))
+        elif (now - when).total_seconds() > LATE_GRACE_MIN * 60:
+            key = f"late_notified:{r['id']}"
+            if not db.kv_get(key):
+                db.kv_set(key, now.isoformat())
+                late.append((r["id"], title, when, st or "bilinmiyor"))
+
+    if notify and chat_id() and (failed or late or published):
+        lines = []
+        if failed:
+            lines.append("<b>⚠️ Paylaşılamayan gönderiler</b>")
+            for did, t, err in failed:
+                lines.append(f"  #{did} {e(t)}\n    Sebep: {e(str(err)[:200])}")
+            lines.append("<i>Bu taslaklar tekrar paylaşım onayı bekliyor.</i>")
+        if late:
+            lines.append("<b>⏳ Saati geçti ama henüz paylaşılmadı</b>")
+            for did, t, w, st in late:
+                lines.append(f"  #{did} {e(t)} — {slots.fmt(w)} (Zernio: {e(st)})")
+        if published:
+            lines.append("<b>✅ Yayınlandı</b>")
+            for did, t, url in published:
+                lines.append(f"  #{did} {e(t)}" + (f"\n    {e(url)}" if url else ""))
+        await app.bot.send_message(chat_id(), "\n".join(lines), parse_mode=ParseMode.HTML,
+                                   disable_web_page_preview=True)
+        for did, *_ in failed:
+            await send_design(app, did)
+    return {"published": published, "failed": failed, "late": late}
+
+
+async def sync_job(ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        await sync_scheduled(ctx.application)
+    except Exception:
+        log.exception("Zernio senkronizasyon hatası")
+
+
 # ============ Komutlar ============
 HELP = (
     "<b>INSTAGRAM İÇERİK BOTU 🚀</b>\n\n"
@@ -294,6 +359,13 @@ async def cmd_ilham(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def cmd_kuyruk(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    # Önce Zernio'dan güncel durumu çek: yayınlananlar kuyruktan düşer,
+    # paylaşılamayanlar ayrı mesajla bildirilir.
+    try:
+        await sync_scheduled(ctx.application)
+    except Exception:
+        log.exception("Zernio senkronizasyon hatası")
+    now = datetime.now(TZ)
     lines = []
     labels = {
         db.IDEA_PENDING: "💡 Fikir onayı bekliyor",
@@ -307,7 +379,10 @@ async def cmd_kuyruk(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
             lines.append(f"<b>{label}</b>")
             for r in rows:
                 t = json.loads(r["idea_json"])["title"]
-                when = f" — {slots.fmt(datetime.fromisoformat(r['scheduled_for']))}" if st == db.SCHEDULED and r["scheduled_for"] else ""
+                when = ""
+                if st == db.SCHEDULED and r["scheduled_for"]:
+                    w = datetime.fromisoformat(r["scheduled_for"])
+                    when = f" — {slots.fmt(w)}" + (" ⚠️ <b>saati geçti, paylaşılmadı</b>" if w < now else "")
                 lines.append(f"  #{r['id']} {e(t)}{when}")
     await update.message.reply_text("\n".join(lines) or "Kuyruk boş.", parse_mode=ParseMode.HTML)
 
@@ -569,6 +644,10 @@ async def on_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 # ============ Zamanlanmış iş ============
 async def daily_job(ctx: ContextTypes.DEFAULT_TYPE) -> None:
     try:
+        await sync_scheduled(ctx.application)  # yayınlananlar kuyruğu şişirmesin
+    except Exception:
+        log.exception("Zernio senkronizasyon hatası")
+    try:
         await run_ideation(ctx.application)
     except Exception as ex:
         log.exception("Günlük iş hatası")
@@ -621,4 +700,6 @@ def build_app() -> Application:
 
     h, m = CFG["ideation"]["run_at"].split(":")
     app.job_queue.run_daily(daily_job, time=dtime(int(h), int(m), tzinfo=TZ), name="daily_ideation")
+    # Planlı gönderilerin yayın durumunu 15 dakikada bir Zernio'dan kontrol et
+    app.job_queue.run_repeating(sync_job, interval=15 * 60, first=30, name="zernio_sync")
     return app

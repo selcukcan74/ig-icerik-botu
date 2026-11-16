@@ -75,3 +75,22 @@ def post_info(resp: Dict[str, Any]) -> Dict[str, Optional[str]]:
     for p in post.get("platforms") or []:
         url = p.get("platformPostUrl") or url
     return {"id": post.get("_id"), "status": post.get("status"), "url": url}
+
+
+def get_post(post_id: str) -> Dict[str, Optional[str]]:
+    """Gönderinin Zernio'daki güncel durumu: status, url, error."""
+    r = httpx.get(f"{BASE}/posts/{post_id}", headers=_headers(), timeout=30)
+    if r.status_code >= 400:
+        raise RuntimeError(f"Zernio {r.status_code}: {r.text[:300]}")
+    post = r.json().get("post", {})
+    status = post.get("status")
+    url = err = None
+    for p in post.get("platforms") or []:
+        url = p.get("platformPostUrl") or url
+        err = p.get("errorMessage") or p.get("error") or err
+        # Platform tarafında hata varsa genel durumdan önceliklidir
+        if p.get("status") in ("failed", "error"):
+            status = "failed"
+    if isinstance(err, dict):
+        err = err.get("message") or str(err)
+    return {"id": post.get("_id"), "status": status, "url": url, "error": err}
