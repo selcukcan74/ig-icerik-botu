@@ -629,7 +629,7 @@ def main() -> None:
     log.info("Panel: http://%s:%s", "127.0.0.1" if host == "0.0.0.0" else host, port)
     from waitress import serve  # üretim için tek süreçli, güvenli WSGI sunucusu
 
-    serve(app, host=host, port=port, threads=4)
+    serve(app, host=host, port=port, threads=8)
 
 
 if __name__ == "__main__":
