@@ -1,0 +1,44 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Yayın & üretim{% endblock %}
+{% set p = cfg.posting or {} %}{% set i = cfg.ideation or {} %}
+{% block content %}
+<div class="head">
+  <div><h1>Yayın & üretim</h1><p>Ne zaman paylaşılacağı ve her gün kaç fikir üretileceği.</p></div>
+</div>
+<form method="post" class="form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  <section class="card">
+    <div class="card-head"><h2>Yayın temposu</h2></div>
+    <div class="grid g3">
+      <div class="field"><label for="ppd">Günlük gönderi</label><input id="ppd" type="number" min="1" max="6" name="posts_per_day" value="{{ p.posts_per_day or 1 }}" required></div>
+      <div class="field"><label for="mq">Kuyruk sınırı (gün)</label><input id="mq" type="number" min="1" max="30" name="max_queue_days" value="{{ p.max_queue_days or 3 }}" required>
+        <div class="hint">Onay bekleyen + planlanmış içerik bu kadar günü doldurunca yeni fikir üretilmez.</div></div>
+      <div class="field"><label for="sl">Yayın saatleri</label><textarea id="sl" name="slots" style="min-height:96px">{{ (p.slots or [])|join('\n') }}</textarea>
+        <div class="hint">Her satıra bir saat (SS:DD). Sırayla kullanılır.</div></div>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Fikir üretimi</h2></div>
+    <div class="grid g3">
+      <div class="field"><label for="ra">Günlük çalışma saati</label><input id="ra" type="text" name="run_at" value="{{ i.run_at }}" placeholder="12:00" required pattern="([01]\d|2[0-3]):[0-5]\d"></div>
+      <div class="field"><label for="ipr">Tur başına fikir</label><input id="ipr" type="number" min="1" max="6" name="ideas_per_run" value="{{ i.ideas_per_run or 3 }}" required></div>
+      <div class="field"><label for="ppw">Haftalık portföy hedefi</label><input id="ppw" type="number" min="0" max="14" name="portfolio_per_week" value="{{ i.portfolio_per_week or 0 }}" required>
+        <div class="hint">0 = portföy gönderisi üretme.</div></div>
+      <div class="field"><label for="cr">Carousel oranı</label><input id="cr" type="number" step="0.05" min="0" max="1" name="carousel_ratio" value="{{ i.carousel_ratio or 0.7 }}" required>
+        <div class="hint">0.7 = fikirlerin ~%70'i carousel.</div></div>
+      <div class="field"><label for="mcs">Carousel slayt sınırı</label><input id="mcs" type="number" min="3" max="10" name="max_carousel_slides" value="{{ i.max_carousel_slides or 7 }}" required></div>
+    </div>
+  </section>
+  {% if p.content_distribution is mapping %}
+  <section class="card">
+    <div class="card-head"><h2>İçerik dağılımı</h2><span class="chip plain">config.yaml'dan</span></div>
+    <div class="grid g4">
+      {% for k, v in p.content_distribution.items() %}
+      <div><div style="display:flex;justify-content:space-between"><span>{{ k }}</span><b>%{{ v }}</b></div><div class="bar"><i style="width: {{ v }}%"></i></div></div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+  <div class="sticky-save actions"><button class="btn btn-primary" type="submit">Kaydet</button></div>
+</form>
+{% endblock %}

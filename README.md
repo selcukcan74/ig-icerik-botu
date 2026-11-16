@@ -36,11 +36,13 @@ flowchart TD
 - HTML/Jinja şablonları ve Playwright ile görsel çıktısı.
 - Zernio ile Instagram gönderisini hemen yayınlama veya ileri tarihe planlama.
 - Günlük yayın slotları ve kuyruk sınırı.
-- `/tasarla` ile belirli bir müşteri/marka brief'i üzerinden içerik hazırlama.
+- `/tasarla` ile belirli bir müşteri/marka brief'i üzerinden içerik hazırlama; `/tasarla #biz` ile kendi markanız için gerçek tanıtım içeriği.
+- Planlanan gönderilerin yayın durumunu Zernio'dan takip etme; paylaşılamayan gönderiler için Telegram bildirimi.
+- Şifre korumalı yerel yönetim paneli: içerik listesi, kuyruk, marka, yayın, ilham, görsel ve bağlantı ayarları.
 
 ## Teknoloji
 
-Python · OpenAI API · Apify · Telegram Bot API · Playwright · Jinja2 · SQLite · Zernio
+Python · OpenAI API · Apify · Telegram Bot API · Playwright · Jinja2 · Flask · SQLite · Zernio
 
 ## Hızlı başlangıç
 
@@ -58,10 +60,23 @@ cp .env.example .env
 ./run.sh
 ```
 
+Yönetim paneli (ayrı terminalde):
+
+```bash
+.venv/bin/python -m igbot.dashboard   # http://127.0.0.1:5001 — şifre ilk açılışta .env'ye yazılır
+```
+
+Testler:
+
+```bash
+.venv/bin/python -m unittest discover -s tests
+```
+
 ## Güvenlik
 
 - Gerçek API anahtarlarını, Telegram tokenını, sohbet kimliğini ve Zernio hesap bilgilerini **asla** Git'e eklemeyin.
 - Gizli değerler yalnızca yerel `.env` dosyasında tutulmalıdır. `.env` Git tarafından yok sayılır.
+- Yönetim paneli varsayılan olarak yalnızca yerel makineden erişilir, şifre ve CSRF korumalıdır ve API anahtarlarını ekranda göstermez. Paneli internete doğrudan açmayın.
 - `data/` klasörü; SQLite veritabanı, indirilen referanslar, görseller ve loglar içerir. Dağıtım paketine dahil edilmez.
 - Referans hesaplardan alınan içerikleri kopyalamayın; yalnızca konu, format ve etkileşim sinyallerinden ilham alarak özgün içerik üretin.
 - Instagram, Apify, OpenAI, Telegram ve Zernio kullanım şartlarına ve ilgili hesapların izinlerine uyun.
@@ -70,12 +85,14 @@ cp .env.example .env
 
 ```text
 igbot/                 Bot, içerik üretimi, veritabanı ve servis entegrasyonları
-templates/             Instagram görsel şablonları
+templates/             Instagram görsel şablonları ve panel sayfaları
+tests/                 Panel ve yapılandırma testleri
 config.yaml            Marka, tasarım, yayın ve ilham ayarları
 .env.example           Gerekli ortam değişkenlerinin örneği
 BENI-OKU.md            Kurulum ve müşteriye uyarlama rehberi
 requirements.txt       Python bağımlılıkları
 run.sh                 Başlatma betiği
+com.example.*.plist    macOS'ta bot ve paneli arka planda çalıştırma örnekleri
 ```
 
 ## Lisans ve sorumluluk

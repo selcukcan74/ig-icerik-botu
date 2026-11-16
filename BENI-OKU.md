@@ -94,14 +94,29 @@ Genellikle değiştirmeniz gerekmez. Yeni Python paketi eklenirse `requirements.
 | `/fikir [n]` | Hemen fikir üretir |
 | `/tara` | İlham hesaplarını tarar |
 | `/ilham <Instagram bağlantısı>` | Tek gönderiyi ilham havuzuna ekler |
-| `/tasarla` | Bir marka/müşteri brief'i üzerinden içerik hazırlar |
+| `/tasarla` | Bir marka/müşteri brief'i üzerinden konsept içerik hazırlar |
+| `/tasarla #biz` | Kendi markanız için gerçek tanıtım içeriği hazırlar (sihirbazda `#biz` yazmak da olur) |
 | `/iptal` | Devam eden tasarım sihirbazını iptal eder |
 | `/kuyruk` | Bekleyen ve planlanmış gönderileri listeler |
 | `/slotlar` | Yayın saatlerini listeler |
 
 Fikir veya tasarım mesajını Telegram'da yanıtlayarak revizyon isteyebilirsiniz. İçerik, fikir onayı ve görsel onayı olmadan sonraki aşamaya geçmez.
 
-## 4. Üretim hattı nasıl çalışır?
+## 4. Yönetim paneli
+
+Marka profili, yayın saatleri, ilham hesapları, görsel stil ve API anahtarları tarayıcıdan yönetilebilir; tüm taslaklar küçük görselleriyle listelenir.
+
+```bash
+.venv/bin/python -m igbot.dashboard
+```
+
+- Adres: `http://127.0.0.1:5001`. Varsayılan olarak yalnızca bu bilgisayardan erişilir.
+- İlk açılışta `.env` içine rastgele bir `DASHBOARD_PASSWORD` yazılır; giriş için bu şifreyi kullanın, sonra "Bağlantılar" sayfasından değiştirin.
+- Panelde yapılan ayar değişikliklerini bot en geç 1 dakika içinde kendiliğinden uygular. API anahtarı değişiklikleri için botun yeniden başlatılması gerekir.
+- Telefondan aynı ağ üzerinden erişmek isterseniz `.env` içinde `DASHBOARD_HOST=0.0.0.0` yapın; şifre yine zorunludur. Paneli internete doğrudan açmayın.
+- Sürekli çalışması için `com.example.instagram-content-engine.dashboard.plist` dosyasındaki yolları düzenleyip `~/Library/LaunchAgents/` altına kopyalayın ve `launchctl bootstrap gui/$(id -u) <plist>` ile yükleyin.
+
+## 5. Üretim hattı nasıl çalışır?
 
 1. Apify, `config.yaml → inspiration.accounts` listesindeki hesapların herkese açık gönderilerini tarar.
 2. OpenAI, marka bilgileri ve tarama sinyallerinden özgün günlük fikirler oluşturur.
@@ -111,7 +126,7 @@ Fikir veya tasarım mesajını Telegram'da yanıtlayarak revizyon isteyebilirsin
 6. Telegram'da görseller ve metin için ikinci onay alınır.
 7. Onaylanan içerik Zernio ile hemen yayınlanır veya planlanır.
 
-## 5. Maliyet ve operasyon notları
+## 6. Maliyet ve operasyon notları
 
 - OpenAI, Apify ve Zernio kullanımına göre ücretlendirme/limit uygulayabilir. İlk denemeleri düşük adetlerle yapın.
 - Görsel üretimi metin üretiminden daha maliyetli olabilir; `visuals.enabled`, kalite ve adet sınırlarını kontrol edin.
@@ -120,15 +135,16 @@ Fikir veya tasarım mesajını Telegram'da yanıtlayarak revizyon isteyebilirsin
 - Telegram onay akışı nihai insan kontrolü içindir; yayın öncesi görsel, açıklama, etiket ve hedef hesabı kontrol edin.
 - Botun günlük fikir üretmesi için çalıştığı makinenin açık ve internete bağlı olması gerekir. Zernio'ya iletilmiş planlı gönderiler, Zernio servisinin koşullarına göre yayınlanır.
 
-## 6. Güvenlik ve veri
+## 7. Güvenlik ve veri
 
 - `.env`, `data/`, `.venv/`, loglar, SQLite veritabanı, indirilen referanslar ve oluşturulmuş görseller paylaşım paketine dahil edilmemelidir.
 - API anahtarlarını iptal/yenileme gerekirse ilgili servis panellerinden yapın.
 - Telegram botunu yalnızca sizin kontrol ettiğiniz özel sohbet üzerinden kullanın.
+- Yönetim paneli API anahtarlarını göstermez, yalnızca son 4 karakterini gösterir. Panel şifrenizi kimseyle paylaşmayın.
 - Üçüncü taraf Instagram hesaplarından veri çekmeden önce Apify ve Instagram şartlarını, gizlilik ve telif haklarını değerlendirin.
 - `data/` klasörü yerel kullanım verilerini içerir; yedekleme ve silme politikasını kendiniz belirleyin.
 
-## 7. İlk test kontrol listesi
+## 8. İlk test kontrol listesi
 
 - [ ] `.env` oluşturuldu ve altı değişken dolduruldu.
 - [ ] `config.yaml` marka bilgileri ve içerik sütunları güncellendi.
@@ -137,6 +153,8 @@ Fikir veya tasarım mesajını Telegram'da yanıtlayarak revizyon isteyebilirsin
 - [ ] Zernio'da doğru Instagram hesabı bağlı.
 - [ ] `/fikir 1` ile fikir üretimi test edildi.
 - [ ] Fikir onayı, görsel üretimi ve ikinci onay test edildi.
+- [ ] Panel açıldı, `.env`'deki `DASHBOARD_PASSWORD` ile giriş yapıldı.
+- [ ] `.venv/bin/python -m unittest discover -s tests` testleri geçti.
 - [ ] İlk paylaşım önce test hesabında veya ileri tarihli planlamayla denendi.
 
 ---

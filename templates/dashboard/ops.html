@@ -1,0 +1,27 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Durum & kayıtlar{% endblock %}
+{% block head %}
+<style>
+  .log { background: var(--bg); border: 1px solid var(--line); border-radius: 11px; padding: 14px; max-height: 560px; overflow: auto; font: 12px/1.6 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-word; }
+  .log .w { color: var(--warn); } .log .e { color: var(--danger); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>Durum & kayıtlar</h1><p>Bot sağlığı, durum sayıları ve son kayıt satırları.</p></div>
+  <a class="btn btn-ghost" href="{{ url_for('ops') }}">Yenile</a>
+</div>
+<div class="grid g4">
+  <div class="kpi"><div class="lbl"><span class="dot {{ 'ok' if bot.ok else ('bad' if bot.ok == False else '') }}"></span>Telegram botu</div><div class="val" style="font-size:22px">{{ bot.label }}</div><div class="sub">{{ bot.detail }}</div></div>
+  <div class="kpi"><div class="lbl">Kuyruk</div><div class="val">{{ '%.1f'|format(queue_days) }}</div><div class="sub">günlük içerik</div></div>
+  <div class="kpi"><div class="lbl">İlham havuzu</div><div class="val">{{ insp.total }}</div><div class="sub">son tarama {{ insp.last or '—' }}</div></div>
+  <div class="kpi"><div class="lbl">Hata</div><div class="val">{{ counts.get('failed', 0) }}</div><div class="sub">başarısız taslak</div></div>
+</div>
+<section class="card" style="margin-top:16px">
+  <div class="card-head"><h2>Son kayıtlar</h2><span class="meta">data/igbot.log</span></div>
+  {% if log_lines %}
+  <div class="log" id="log">{% for line in log_lines %}<div class="{{ 'e' if (' ERROR ' in line or 'Traceback' in line) else ('w' if ' WARNING ' in line else '') }}">{{ line }}</div>{% endfor %}</div>
+  <script>var l=document.getElementById('log'); l.scrollTop=l.scrollHeight;</script>
+  {% else %}<div class="empty">Kayıt yok.</div>{% endif %}
+</section>
+{% endblock %}

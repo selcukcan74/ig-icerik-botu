@@ -1,0 +1,65 @@
+{% extends "dashboard/base.html" %}
+{% block title %}İçerikler{% endblock %}
+{% block head %}
+<style>
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+  .post { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+  .post .img { aspect-ratio: 4 / 5; background: var(--surface-2); position: relative; }
+  .post .img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .post .img .noimg { position: absolute; inset: 0; display: grid; place-items: center; padding: 18px; text-align: center; color: var(--muted); font: 600 15px/1.35 var(--fh); }
+  .post .count { position: absolute; top: 10px; right: 10px; background: rgba(11,11,13,.8); padding: 3px 8px; border-radius: 99px; font-size: 12px; }
+  .post .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .post .top { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .post h3 { font-size: 15px; font-weight: 600; line-height: 1.35; }
+  .post details { font-size: 13px; color: var(--muted); }
+  .post summary { cursor: pointer; color: var(--text); font-size: 13px; }
+  .post pre { white-space: pre-wrap; font: 13px/1.5 var(--fb); margin: 8px 0 0; max-height: 260px; overflow: auto; }
+  .post .foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-top: 6px; }
+  .err { font-size: 12.5px; color: var(--danger); background: var(--danger-soft); padding: 8px 10px; border-radius: 8px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>İçerikler</h1><p>Botun ürettiği tüm taslaklar. Onay, revize ve paylaşım Telegram'dan yapılır.</p></div>
+</div>
+<nav class="tabs">
+  <a href="{{ url_for('content') }}" class="{{ 'on' if not current }}">Tümü <small>{{ counts.values()|sum }}</small></a>
+  {% for key, (label, tone) in statuses.items() %}{% if counts.get(key) %}
+  <a href="{{ url_for('content', status=key) }}" class="{{ 'on' if current == key }}">{{ label }} <small>{{ counts.get(key) }}</small></a>
+  {% endif %}{% endfor %}
+</nav>
+
+{% if drafts %}
+<div class="cards">
+  {% for d in drafts %}
+  <article class="post">
+    <div class="img">
+      {% if d.has_image %}<img src="{{ url_for('media', draft_id=d.id, idx=0) }}" alt="{{ d.title }}" loading="lazy">
+        {% if d.image_count > 1 %}<span class="count">1/{{ d.image_count }}</span>{% endif %}
+      {% else %}<div class="noimg">{{ d.hook or d.title }}</div>{% endif %}
+    </div>
+    <div class="body">
+      <div class="top">
+        <span class="chip {{ d.tone }}">{{ d.status_label }}</span>
+        <span class="meta">#{{ d.id }} · {{ d.format }}</span>
+      </div>
+      <h3>{{ d.title }}</h3>
+      <div class="meta">
+        {% if d.own %}<span class="chip accent plain">Kendi markamız</span>{% elif d.client %}<span class="chip plain">{{ d.client }}</span>{% endif %}
+        {% if d.pillar %}{{ d.pillar }}{% endif %}
+      </div>
+      {% if d.overdue %}<div class="err">Planlanan saat geçti ama yayın doğrulanmadı.</div>{% endif %}
+      {% if d.status == 'failed' and d.error %}<div class="err">{{ d.error[:180] }}</div>{% endif %}
+      {% if d.caption %}<details><summary>Açıklamayı göster</summary><pre>{{ d.caption }}</pre></details>{% endif %}
+      <div class="foot">
+        <span class="meta">{{ d.when_label or d.created }}</span>
+        {% if d.permalink %}<a class="meta" href="{{ d.permalink }}" target="_blank" rel="noopener noreferrer">Instagram ↗</a>{% endif %}
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">Bu durumda içerik yok.</div>
+{% endif %}
+{% endblock %}

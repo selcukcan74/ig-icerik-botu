@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Panel{% endblock %} · {{ brand_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0B0B0D; --surface: #141417; --surface-2: #1B1B20; --line: #26262C; --line-2: #33333B;
+      --text: #F4F1EA; --muted: #9A978F; --faint: #6B6962;
+      --accent: #C6FF3D; --accent-ink: #0E0E10; --accent-soft: rgba(198,255,61,.12);
+      --ok: #4ADE80; --ok-soft: rgba(74,222,128,.12);
+      --warn: #FBBF24; --warn-soft: rgba(251,191,36,.12);
+      --info: #60A5FA; --info-soft: rgba(96,165,250,.12);
+      --danger: #F87171; --danger-soft: rgba(248,113,113,.12);
+      --radius: 14px; --fh: "Space Grotesk", system-ui, sans-serif; --fb: "Inter", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--fb); -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    h1, h2, h3 { font-family: var(--fh); letter-spacing: -.01em; margin: 0; }
+    h1 { font-size: 28px; font-weight: 700; }
+    h2 { font-size: 17px; font-weight: 600; }
+    .muted { color: var(--muted); } .faint { color: var(--faint); }
+    .small { font-size: 13px; }
+
+    /* Yerleşim */
+    .shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+    .side { position: sticky; top: 0; height: 100vh; border-right: 1px solid var(--line); padding: 22px 14px; display: flex; flex-direction: column; gap: 22px; background: var(--bg); }
+    .logo { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
+    .logo-mark { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font: 700 15px var(--fh); }
+    .logo b { font: 600 15px var(--fh); display: block; line-height: 1.2; }
+    .logo span { font-size: 12px; color: var(--muted); }
+    .nav { display: flex; flex-direction: column; gap: 2px; }
+    .nav-group { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); padding: 14px 10px 6px; }
+    .nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; text-decoration: none; color: var(--muted); font-weight: 500; }
+    .nav a svg { width: 17px; height: 17px; flex: none; opacity: .85; }
+    .nav a:hover { background: var(--surface); color: var(--text); }
+    .nav a.on { background: var(--surface-2); color: var(--text); box-shadow: inset 2px 0 0 var(--accent); }
+    .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+    .botstate { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
+    .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--faint); }
+    .dot.ok { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
+    .dot.bad { background: var(--danger); box-shadow: 0 0 0 4px var(--danger-soft); }
+    .botstate b { font-size: 13px; display: block; }
+    .botstate span { font-size: 12px; color: var(--muted); }
+    .main { padding: 30px 36px 60px; max-width: 1240px; width: 100%; }
+    .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .head p { margin: 6px 0 0; color: var(--muted); }
+
+    /* Bileşenler */
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+    .card + .card { margin-top: 16px; }
+    .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .card-head a { font-size: 13px; color: var(--muted); text-decoration: none; }
+    .card-head a:hover { color: var(--accent); }
+    .grid { display: grid; gap: 16px; }
+    .g2 { grid-template-columns: repeat(2, minmax(0,1fr)); } .g3 { grid-template-columns: repeat(3, minmax(0,1fr)); } .g4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .span2 { grid-column: span 2; }
+    .grid > * { min-width: 0; }
+    .grid > .card + .card { margin-top: 0; }
+    .alert > div { min-width: 0; overflow-wrap: anywhere; }
+    .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; text-decoration: none; display: block; transition: border-color .15s; }
+    a.kpi:hover { border-color: var(--line-2); }
+    .kpi .lbl { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+    .kpi .val { font: 700 34px/1.1 var(--fh); margin-top: 10px; font-variant-numeric: tabular-nums; }
+    .kpi .sub { font-size: 12px; color: var(--faint); margin-top: 4px; }
+    .kpi.hot { border-color: rgba(198,255,61,.35); }
+    .kpi.hot .val { color: var(--accent); }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; background: var(--surface-2); color: var(--muted); }
+    .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .chip.ok { background: var(--ok-soft); color: var(--ok); } .chip.warn { background: var(--warn-soft); color: var(--warn); }
+    .chip.info { background: var(--info-soft); color: var(--info); } .chip.danger { background: var(--danger-soft); color: var(--danger); }
+    .chip.accent { background: var(--accent-soft); color: var(--accent); }
+    .chip.plain::before { display: none; }
+    .bar { height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; margin-top: 12px; }
+    .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+    .list { list-style: none; margin: 0; padding: 0; }
+    .list > li { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+    .list > li:first-child { border-top: 0; padding-top: 2px; }
+    .list .grow { flex: 1; min-width: 0; }
+    .ttl { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .meta { font-size: 12.5px; color: var(--muted); }
+    .when { font: 600 13px var(--fh); color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .thumb { width: 44px; height: 55px; border-radius: 7px; object-fit: cover; background: var(--surface-2); flex: none; border: 1px solid var(--line); }
+    .empty { padding: 22px; text-align: center; color: var(--muted); border: 1px dashed var(--line-2); border-radius: 11px; font-size: 14px; }
+    .alert { display: flex; gap: 10px; padding: 12px 14px; border-radius: 11px; margin-bottom: 16px; font-size: 14px; border: 1px solid; }
+    .alert.ok { background: var(--ok-soft); border-color: rgba(74,222,128,.3); }
+    .alert.danger { background: var(--danger-soft); border-color: rgba(248,113,113,.35); }
+    .alert.warn { background: var(--warn-soft); border-color: rgba(251,191,36,.35); }
+
+    /* Form */
+    .form { display: grid; gap: 18px; }
+    .field label { display: block; font-weight: 500; font-size: 14px; margin-bottom: 6px; }
+    .field .hint { font-size: 12.5px; color: var(--faint); margin-top: 6px; }
+    input[type=text], input[type=password], input[type=number], input[type=url], textarea, select {
+      width: 100%; background: var(--bg); border: 1px solid var(--line-2); color: var(--text); border-radius: 10px;
+      padding: 10px 12px; font: 14px/1.45 var(--fb); transition: border-color .15s, box-shadow .15s;
+    }
+    textarea { min-height: 96px; resize: vertical; }
+    textarea.tall { min-height: 160px; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 500; }
+    .switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: 10px; border: 1px solid transparent; font: 600 14px var(--fb); cursor: pointer; text-decoration: none; }
+    .btn-primary { background: var(--accent); color: var(--accent-ink); }
+    .btn-primary:hover { filter: brightness(1.06); }
+    .btn-ghost { background: transparent; border-color: var(--line-2); color: var(--text); }
+    .btn-ghost:hover { background: var(--surface-2); }
+    .btn-danger { background: transparent; border-color: rgba(248,113,113,.4); color: var(--danger); padding: 6px 12px; font-size: 13px; }
+    .btn-danger:hover { background: var(--danger-soft); }
+    .actions { display: flex; gap: 10px; justify-content: flex-end; padding-top: 4px; }
+    .sticky-save { position: sticky; bottom: 0; background: linear-gradient(180deg, transparent, var(--bg) 35%); padding: 18px 0 4px; margin-top: 8px; }
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+    .tabs a { padding: 7px 12px; border-radius: 999px; text-decoration: none; font-size: 13px; color: var(--muted); border: 1px solid var(--line); }
+    .tabs a:hover { color: var(--text); border-color: var(--line-2); }
+    .tabs a.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .tabs a small { opacity: .7; margin-left: 4px; }
+    code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+    .kv { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; font-size: 14px; }
+    .kv dt { color: var(--muted); } .kv dd { margin: 0; }
+    .menu-btn { display: none; }
+
+    @media (max-width: 1080px) { .g4 { grid-template-columns: repeat(2, minmax(0,1fr)); } .g3 { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 860px) {
+      .shell { grid-template-columns: minmax(0, 1fr); }
+      .side { position: fixed; inset: 0 auto 0 0; width: 260px; z-index: 20; transform: translateX(-100%); transition: transform .2s; box-shadow: 20px 0 40px rgba(0,0,0,.5); }
+      .side.open { transform: none; }
+      .menu-btn { display: inline-flex; position: sticky; top: 0; z-index: 10; width: 100%; padding: 12px 16px; background: var(--bg); border: 0; border-bottom: 1px solid var(--line); color: var(--text); font: 600 15px var(--fh); gap: 10px; align-items: center; cursor: pointer; }
+      .main { padding: 20px 16px 50px; }
+      .g2, .g3 { grid-template-columns: minmax(0, 1fr); } .span2 { grid-column: auto; }
+      .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .kpi { padding: 14px; } .kpi .val { font-size: 26px; }
+      h1 { font-size: 24px; }
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% macro icon(name) -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{%- if name == 'home' %}<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>
+{%- elif name == 'grid' %}<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>
+{%- elif name == 'brand' %}<path d="M12 3l2.6 5.6L20 9.5l-4 4 1 5.5-5-2.7-5 2.7 1-5.5-4-4 5.4-.9z"/>
+{%- elif name == 'clock' %}<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+{%- elif name == 'spark' %}<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/>
+{%- elif name == 'image' %}<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>
+{%- elif name == 'key' %}<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>
+{%- elif name == 'pulse' %}<path d="M3 12h4l3-7 4 14 3-7h4"/>
+{%- endif %}</svg>
+{%- endmacro %}
+
+<button class="menu-btn" onclick="document.querySelector('.side').classList.toggle('open')" aria-label="Menü">☰ {{ brand_name }}</button>
+<div class="shell">
+  <aside class="side">
+    <div class="logo">
+      <div class="logo-mark">{{ brand_name[:1] }}</div>
+      <div><b>{{ brand_name }}</b><span>İçerik paneli</span></div>
+    </div>
+    <nav class="nav">
+      <a href="{{ url_for('index') }}" class="{{ 'on' if nav_active == 'index' }}">{{ icon('home') }}Genel bakış</a>
+      <a href="{{ url_for('content') }}" class="{{ 'on' if nav_active == 'content' }}">{{ icon('grid') }}İçerikler</a>
+      <div class="nav-group">Ayarlar</div>
+      <a href="{{ url_for('settings') }}" class="{{ 'on' if nav_active == 'settings' }}">{{ icon('brand') }}Marka & ses</a>
+      <a href="{{ url_for('schedule') }}" class="{{ 'on' if nav_active == 'schedule' }}">{{ icon('clock') }}Yayın & üretim</a>
+      <a href="{{ url_for('inspiration') }}" class="{{ 'on' if nav_active == 'inspiration' }}">{{ icon('spark') }}İlham & referans</a>
+      <a href="{{ url_for('prompts') }}" class="{{ 'on' if nav_active == 'prompts' }}">{{ icon('image') }}Görsel & model</a>
+      <div class="nav-group">Sistem</div>
+      <a href="{{ url_for('integrations') }}" class="{{ 'on' if nav_active == 'integrations' }}">{{ icon('key') }}Bağlantılar</a>
+      <a href="{{ url_for('ops') }}" class="{{ 'on' if nav_active == 'ops' }}">{{ icon('pulse') }}Durum & kayıtlar</a>
+    </nav>
+    <div class="side-foot">
+      {% if bot %}
+      <div class="botstate" title="{{ bot.detail }}">
+        <span class="dot {{ 'ok' if bot.ok else ('bad' if bot.ok == False else '') }}"></span>
+        <div><b>Telegram botu: {{ bot.label }}</b><span>{{ bot.detail }}</span></div>
+      </div>
+      {% endif %}
+      <form method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button class="btn btn-ghost" style="width:100%">Çıkış yap</button>
+      </form>
+    </div>
+  </aside>
+  <main class="main">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="alert {{ cat }}" role="status">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>

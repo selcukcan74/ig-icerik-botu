@@ -57,6 +57,14 @@ CREATE TABLE IF NOT EXISTS kv (
     k TEXT PRIMARY KEY,
     v TEXT
 );
+CREATE TABLE IF NOT EXISTS manual_refs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT,
+    url TEXT,
+    title TEXT,
+    notes TEXT,
+    created_at TEXT
+);
 """
 
 
@@ -207,6 +215,29 @@ def taken_slots() -> List[str]:
             (SCHEDULED, PUBLISHING, PUBLISHED),
         ).fetchall()
     return [r["scheduled_for"] for r in rows]
+
+
+# ---------- manual references ----------
+def add_manual_reference(source: str, url: str, title: str = "", notes: str = "") -> int:
+    with conn() as c:
+        cur = c.execute(
+            "INSERT INTO manual_refs(source,url,title,notes,created_at) VALUES(?,?,?,?,?)",
+            (source, url, title, notes, now_iso()),
+        )
+        return int(cur.lastrowid)
+
+
+def list_manual_references(limit: int = 20) -> List[sqlite3.Row]:
+    with conn() as c:
+        return c.execute(
+            "SELECT * FROM manual_refs ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+
+
+def delete_manual_reference(ref_id: int) -> None:
+    with conn() as c:
+        c.execute("DELETE FROM manual_refs WHERE id=?", (ref_id,))
 
 
 # ---------- telegram message ↔ draft ----------

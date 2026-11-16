@@ -1,0 +1,60 @@
+{% extends "dashboard/base.html" %}
+{% block title %}İlham & referans{% endblock %}
+{% set ins = cfg.inspiration or {} %}
+{% block content %}
+<div class="head">
+  <div><h1>İlham & referans</h1><p>Takip edilen hesaplar ve fikir üretimine yön veren referanslar.</p></div>
+  <div class="meta">{{ insp.total }} gönderi · {{ insp.owners }} hesap · son tarama {{ insp.last or '—' }}</div>
+</div>
+
+<div class="grid g2">
+  <form method="post" class="card form" style="align-content:start">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div class="card-head" style="margin:0"><h2>Takip edilen hesaplar</h2></div>
+    <div class="field"><label for="acc">Instagram hesapları</label><textarea id="acc" name="accounts" class="tall">{{ (ins.accounts or [])|join('\n') }}</textarea>
+      <div class="hint">Her satıra bir kullanıcı adı, @ olmadan. Apify ile taranır.</div></div>
+    <div class="field"><label for="rc">Odak kategorileri</label><textarea id="rc" name="research_categories">{{ (ins.research_categories or [])|join('\n') }}</textarea>
+      <div class="hint">Fikir üretiminde odak olarak modele iletilir.</div></div>
+    <div class="grid g3">
+      <div class="field"><label for="ppa">Hesap başına</label><input id="ppa" type="number" min="1" max="50" name="posts_per_account" value="{{ ins.posts_per_account or 12 }}"></div>
+      <div class="field"><label for="tpl">Modele giden</label><input id="tpl" type="number" min="1" max="40" name="top_posts_for_llm" value="{{ ins.top_posts_for_llm or 15 }}"></div>
+      <div class="field"><label for="sed">Tarama (gün)</label><input id="sed" type="number" min="1" max="30" name="scrape_every_days" value="{{ ins.scrape_every_days or 3 }}"></div>
+    </div>
+    <div class="actions"><button class="btn btn-primary" type="submit">Kaydet</button></div>
+  </form>
+
+  <div>
+    <form method="post" action="{{ url_for('add_reference') }}" class="card form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <div class="card-head" style="margin:0"><h2>Referans ekle</h2></div>
+      <p class="muted small" style="margin:-6px 0 0">Beğendiğin bir gönderi, site ya da Behance projesi. Başlık ve not, sonraki fikir turunda modele yön olarak verilir.</p>
+      <div class="grid g2">
+        <div class="field"><label for="rt">Başlık</label><input id="rt" type="text" name="title" placeholder="ör. Minimal kahve markası"></div>
+        <div class="field"><label for="rs">Kaynak</label>
+          <select id="rs" name="source"><option value="instagram">Instagram</option><option value="behance">Behance</option><option value="pinterest">Pinterest</option><option value="web">Web</option><option value="manuel">Diğer</option></select></div>
+        <div class="field span2"><label for="ru">Bağlantı</label><input id="ru" type="url" name="url" placeholder="https://" required></div>
+        <div class="field span2"><label for="rn">Not</label><textarea id="rn" name="notes" placeholder="Neyi beğendin? Renk, tipografi, kurgu…" style="min-height:70px"></textarea></div>
+      </div>
+      <div class="actions"><button class="btn btn-primary" type="submit">Ekle</button></div>
+    </form>
+
+    <section class="card">
+      <div class="card-head"><h2>Kayıtlı referanslar</h2><span class="meta">{{ manual_refs|length }}</span></div>
+      {% if manual_refs %}
+      <ul class="list">{% for r in manual_refs %}
+        <li>
+          <div class="grow">
+            <div class="ttl">{{ r.title or r.url }}</div>
+            <div class="meta"><span class="chip plain">{{ r.source }}</span> <a href="{{ r.url }}" target="_blank" rel="noopener noreferrer">{{ r.url[:60] }}{{ '…' if r.url|length > 60 }}</a></div>
+            {% if r.notes %}<div class="meta" style="margin-top:4px">{{ r.notes }}</div>{% endif %}
+          </div>
+          <form method="post" action="{{ url_for('delete_reference', ref_id=r.id) }}" onsubmit="return confirm('Referans silinsin mi?')">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="btn btn-danger">Sil</button>
+          </form>
+        </li>{% endfor %}
+      </ul>
+      {% else %}<div class="empty">Henüz referans yok.</div>{% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -27,7 +27,7 @@ from telegram.ext import (
 )
 
 from . import apify, db, imagegen, llm, render, slots, zernio
-from .config import CFG, TZ, env
+from .config import CFG, TZ, env, reload_if_changed
 
 log = logging.getLogger(__name__)
 IG_URL = re.compile(r"https?://(www\.)?instagram\.com/(p|reel|reels)/[\w-]+/?\S*")
@@ -691,6 +691,27 @@ async def daily_job(ctx: ContextTypes.DEFAULT_TYPE) -> None:
         await ctx.bot.send_message(chat_id(), f"⚠️ Günlük taslak üretimi başarısız: {str(ex)[:400]}")
 
 
+def schedule_daily(app: Application) -> None:
+    for j in app.job_queue.get_jobs_by_name("daily_ideation"):
+        j.schedule_removal()
+    h, m = CFG["ideation"]["run_at"].split(":")
+    app.job_queue.run_daily(daily_job, time=dtime(int(h), int(m), tzinfo=TZ), name="daily_ideation")
+
+
+async def config_watch_job(ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    db.kv_set("bot_heartbeat", datetime.now(TZ).isoformat(timespec="seconds"))  # panel "bot çalışıyor" göstergesi
+    old_run_at = CFG.get("ideation", {}).get("run_at")
+    if not reload_if_changed():
+        return
+    log.info("config.yaml değişti, ayarlar yeniden yüklendi")
+    if CFG.get("ideation", {}).get("run_at") != old_run_at:
+        try:
+            schedule_daily(ctx.application)
+            log.info("Günlük fikir saati güncellendi: %s", CFG["ideation"]["run_at"])
+        except Exception:
+            log.exception("Günlük iş yeniden zamanlanamadı")
+
+
 async def on_error(update: object, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     log.exception("İşlenmeyen hata", exc_info=ctx.error)
 
@@ -735,8 +756,9 @@ def build_app() -> Application:
     app.add_handler(MessageHandler(only_me & filters.TEXT & ~filters.COMMAND, on_text))
     app.add_error_handler(on_error)
 
-    h, m = CFG["ideation"]["run_at"].split(":")
-    app.job_queue.run_daily(daily_job, time=dtime(int(h), int(m), tzinfo=TZ), name="daily_ideation")
+    schedule_daily(app)
+    # Dashboard'dan yapılan config değişikliklerini yeniden başlatmadan uygula
+    app.job_queue.run_repeating(config_watch_job, interval=60, first=5, name="config_watch")
     # Planlı gönderilerin yayın durumunu 15 dakikada bir Zernio'dan kontrol et
     app.job_queue.run_repeating(sync_job, interval=15 * 60, first=30, name="zernio_sync")
     return app

@@ -1,6 +1,7 @@
 # =========================================================
 #  Instagram İçerik Motoru — Genel Ayarlar
-#  Bu dosyayı markanıza göre düzenleyip botu yeniden başlatın.
+#  Bu dosyayı markanıza göre düzenleyin ya da yönetim panelini kullanın
+#  (python -m igbot.dashboard). Bot değişiklikleri 1 dakika içinde algılar.
 # =========================================================
 
 timezone: Europe/Istanbul
@@ -15,7 +16,26 @@ brand:
   tone: "Markanın iletişim tonunu tanımlayın: ör. samimi, uzman, enerjik, sade ve profesyonel"
   goal: "İçerik hedefini yazın: bilinirlik, etkileşim, web sitesi ziyareti, satış veya DM"
   cta_default: "Markanıza uygun varsayılan çağrı metnini yazın"
-  # İçerik sütunları — sektörünüze göre düzenleyin.
+  # İsteğe bağlı: konumlandırma ve slogan modele marka bağlamı olarak verilir.
+  positioning: "Markanın kendini rakiplerinden nasıl ayırdığını tek cümlede yazın"
+  slogan: ""
+  # İsteğe bağlı: hizmet alanları. Birden fazla iş kolunuz varsa her birini ayrı tanımlayın.
+  # services:
+  #   tasarim:
+  #     enabled: true
+  #     name: "Grafik Tasarım"
+  #     description: "Kısa açıklama"
+  #     services: ["Logo tasarımı", "Sosyal medya tasarımı"]
+  #   otomasyon:
+  #     enabled: true
+  #     name: "Otomasyon"
+  #     description: "Kısa açıklama"
+  #     technologies: ["n8n", "OpenAI"]
+  #     services: ["DM otomasyonu"]
+  # İçerik sütunları — sektörünüze göre düzenleyin. Basit liste ya da ağırlıklı yapı kullanılabilir:
+  # pillars:
+  #   egitim: {weight: 40, topics: ["İpuçları", "Sık yapılan hatalar"]}
+  #   tanitim: {weight: 30, topics: ["Hizmet tanıtımı"]}
   pillars:
     - "Ürün veya hizmet tanıtımı"
     - "Hedef kitlenin sık karşılaştığı sorunlar ve çözümler"
@@ -51,6 +71,8 @@ posting:
   slots: ["12:30", "20:00"]   # posts_per_day=1 ise yalnızca ilki kullanılır
   # Kuyruk (onay bekleyen + planlanmış) bu kadar günü doldurunca yeni fikir üretme
   max_queue_days: 3
+  # İsteğe bağlı: hedef içerik dağılımı (yüzde). Fikir üretiminde modele iletilir.
+  # content_distribution: {egitim: 40, tanitim: 30, portfoy: 30}
 
 # ---------- Fikir üretimi ----------
 ideation:
@@ -95,6 +117,8 @@ inspiration:
   scrape_every_days: 3        # Apify maliyetini düşük tutmak için 3 günde bir tara
   top_posts_for_llm: 15       # etkileşime göre en iyi N gönderi LLM'e verilir
   max_comments_per_post: 8
+  # İsteğe bağlı: fikir üretiminde odaklanılacak kategoriler
+  research_categories: []
 
 # ---------- LLM (OpenAI) ----------
 llm:

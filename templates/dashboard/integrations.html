@@ -1,0 +1,31 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Bağlantılar{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>Bağlantılar</h1><p>Servis anahtarları <code>.env</code> dosyasında saklanır ve burada asla gösterilmez.</p></div>
+</div>
+<form method="post" class="form" autocomplete="off">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  <section class="card">
+    <ul class="list">
+      {% for it in items %}
+      <li style="flex-wrap:wrap">
+        <div style="flex:1 1 220px">
+          <div style="display:flex;gap:8px;align-items:center"><b>{{ it.name }}</b>
+            {% if it.set %}<span class="chip ok">Bağlı</span>{% else %}<span class="chip danger">Eksik</span>{% endif %}</div>
+          <div class="meta">{{ it.desc }} · <code>{{ it.key }}</code> {% if it.masked %}<span class="faint">{{ it.masked }}</span>{% endif %}</div>
+        </div>
+        <input style="flex:1 1 260px" type="password" name="{{ it.key }}" placeholder="{{ 'Değiştirmek için yeni değeri gir' if it.set else 'Değer gir' }}" autocomplete="new-password">
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Panel şifresi</h2></div>
+    <div class="field"><label for="dp">Yeni şifre</label><input id="dp" type="password" name="DASHBOARD_PASSWORD" minlength="10" autocomplete="new-password" placeholder="Boş bırakırsan değişmez">
+      <div class="hint">En az 10 karakter.</div></div>
+  </section>
+  <div class="alert warn">Anahtar değişikliklerinin bota yansıması için botun yeniden başlatılması gerekir.</div>
+  <div class="actions"><button class="btn btn-primary" type="submit">Kaydet</button></div>
+</form>
+{% endblock %}

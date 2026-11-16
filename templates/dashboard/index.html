@@ -1,0 +1,101 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Genel bakış{% endblock %}
+{% macro row(d, show_when=true) -%}
+<li>
+  {% if d.has_image %}<img class="thumb" src="{{ url_for('media', draft_id=d.id, idx=0) }}" alt="" loading="lazy">{% else %}<div class="thumb"></div>{% endif %}
+  <div class="grow">
+    <div class="ttl">{{ d.title }}</div>
+    <div class="meta">#{{ d.id }} · {{ d.format }}{% if d.own %} · kendi markamız{% elif d.client %} · {{ d.client }}{% endif %}</div>
+  </div>
+  {% if show_when and d.when_label %}<span class="when">{{ d.when_label }}</span>{% endif %}
+  <span class="chip {{ d.tone }}">{{ d.status_label }}</span>
+</li>
+{%- endmacro %}
+{% block content %}
+<div class="head">
+  <div>
+    <h1>Genel bakış</h1>
+    <p>Kuyruk, yaklaşan paylaşımlar ve onay bekleyen işler. Onaylar Telegram'dan verilir.</p>
+  </div>
+  <a class="btn btn-ghost" href="{{ url_for('content') }}">Tüm içerikler →</a>
+</div>
+
+{% if problems %}
+<div class="alert danger">
+  <div><b>{{ problems|length }} içerik dikkat istiyor.</b>
+    {% for d in problems %}<div style="margin-top:4px">#{{ d.id }} {{ d.title }} — <span class="muted">{{ 'saati geçti, paylaşılmadı' if d.overdue else d.error[:120] }}</span></div>{% endfor %}
+  </div>
+  <a class="btn btn-ghost small" style="margin-left:auto;align-self:center;padding:6px 12px" href="{{ url_for('content', status='failed') }}">Gör</a>
+</div>
+{% endif %}
+
+<div class="grid g4">
+  <a class="kpi {{ 'hot' if waiting }}" href="{{ url_for('content', status='design_pending') }}">
+    <div class="lbl">Onay bekleyen</div>
+    <div class="val">{{ waiting|length }}</div>
+    <div class="sub">{{ counts.get('idea_pending', 0) }} fikir · {{ counts.get('design_pending', 0) }} tasarım</div>
+  </a>
+  <a class="kpi" href="{{ url_for('content', status='scheduled') }}">
+    <div class="lbl">Planlanmış</div>
+    <div class="val">{{ counts.get('scheduled', 0) }}</div>
+    <div class="sub">{{ upcoming[0].when_label if upcoming else 'Sırada gönderi yok' }}</div>
+  </a>
+  <a class="kpi" href="{{ url_for('content', status='published') }}">
+    <div class="lbl">Yayınlanan</div>
+    <div class="val">{{ counts.get('published', 0) }}</div>
+    <div class="sub">toplam</div>
+  </a>
+  <div class="kpi">
+    <div class="lbl">Kuyruk doluluğu</div>
+    <div class="val">{{ '%.1f'|format(queue_days) }}<span class="muted" style="font-size:16px"> / {{ queue_max|int }} gün</span></div>
+    <div class="bar"><i style="width: {{ queue_pct }}%"></i></div>
+  </div>
+</div>
+
+<div class="grid g3" style="margin-top:16px">
+  <section class="card span2">
+    <div class="card-head"><h2>Yaklaşan paylaşımlar</h2><a href="{{ url_for('content', status='scheduled') }}">Tümü</a></div>
+    {% if upcoming %}<ul class="list">{% for d in upcoming[:6] %}{{ row(d) }}{% endfor %}</ul>
+    {% else %}<div class="empty">Planlanmış gönderi yok. Telegram'da onaylanan tasarımlar burada sıralanır.</div>{% endif %}
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Takvim</h2></div>
+    <dl class="kv">
+      <dt>Fikir üretimi</dt><dd>Her gün {{ run_at }}</dd>
+      <dt>Boş slotlar</dt><dd>{% for s in free_slots %}<div>{{ s }}</div>{% else %}<span class="muted">Önümüzdeki 14 gün dolu</span>{% endfor %}</dd>
+    </dl>
+  </section>
+</div>
+
+<div class="grid g2" style="margin-top:16px">
+  <section class="card">
+    <div class="card-head"><h2>Onay bekleyenler</h2><a href="{{ url_for('content', status='idea_pending') }}">Tümü</a></div>
+    {% if waiting %}<ul class="list">{% for d in waiting[:6] %}{{ row(d, false) }}{% endfor %}</ul>
+    {% else %}<div class="empty">Bekleyen onay yok 🎉</div>{% endif %}
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Son yayınlananlar</h2><a href="{{ url_for('content', status='published') }}">Tümü</a></div>
+    {% if published %}
+    <ul class="list">{% for d in published %}
+      <li>
+        {% if d.has_image %}<img class="thumb" src="{{ url_for('media', draft_id=d.id, idx=0) }}" alt="" loading="lazy">{% else %}<div class="thumb"></div>{% endif %}
+        <div class="grow"><div class="ttl">{{ d.title }}</div><div class="meta">#{{ d.id }} · {{ d.when_label }}</div></div>
+        {% if d.permalink %}<a class="btn btn-ghost small" style="padding:6px 12px" href="{{ d.permalink }}" target="_blank" rel="noopener noreferrer">Instagram ↗</a>{% endif %}
+      </li>{% endfor %}
+    </ul>
+    {% else %}<div class="empty">Henüz yayınlanan gönderi yok.</div>{% endif %}
+  </section>
+</div>
+
+<section class="card" style="margin-top:16px">
+  <div class="card-head"><h2>İlham havuzu</h2><a href="{{ url_for('inspiration') }}">Yönet</a></div>
+  <div class="meta" style="margin-bottom:10px">{{ insp.total }} gönderi · {{ insp.owners }} hesap · son tarama {{ insp.last or '—' }}</div>
+  {% if insp.top %}
+  <ul class="list">{% for p in insp.top[:4] %}
+    <li><div class="grow"><div class="ttl">@{{ p.owner }} — {{ (p.caption or '').replace('\n', ' ') }}</div>
+      <div class="meta">{{ p.likes or 0 }} beğeni · {{ p.comments_count or 0 }} yorum</div></div>
+      <a class="meta" href="{{ p.url }}" target="_blank" rel="noopener noreferrer">Aç ↗</a></li>
+  {% endfor %}</ul>
+  {% else %}<div class="empty">İlham verisi yok. Telegram'dan /tara ile tarama başlatabilirsin.</div>{% endif %}
+</section>
+{% endblock %}

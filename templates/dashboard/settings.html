@@ -1,0 +1,62 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Marka & ses{% endblock %}
+{% set b = cfg.brand or {} %}
+{% block content %}
+<div class="head">
+  <div><h1>Marka & ses</h1><p>Fikir, metin ve açıklama üretiminde kullanılan marka profili.</p></div>
+</div>
+<form method="post" class="form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  <section class="card">
+    <div class="card-head"><h2>Kimlik</h2></div>
+    <div class="grid g2">
+      <div class="field"><label for="bn">Marka adı</label><input id="bn" type="text" name="brand_name" value="{{ b.name }}" required></div>
+      <div class="field"><label for="bh">Instagram kullanıcı adı</label><input id="bh" type="text" name="brand_handle" value="{{ b.handle }}" required></div>
+      <div class="field span2"><label for="bni">Alan</label><input id="bni" type="text" name="brand_niche" value="{{ b.niche }}" required>
+        <div class="hint">Ne yaptığınızı tek cümlede anlatın. /tasarla #biz'de sektör boş bırakılırsa bu kullanılır.</div></div>
+      <div class="field span2"><label for="bp">Konumlandırma</label><textarea id="bp" name="brand_positioning">{{ b.positioning or '' }}</textarea></div>
+      <div class="field span2"><label for="bs">Slogan</label><input id="bs" type="text" name="brand_slogan" value="{{ b.slogan or '' }}"></div>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Kitle ve ton</h2></div>
+    <div class="grid g2">
+      <div class="field span2"><label for="ba">Hedef kitle</label><textarea id="ba" name="brand_audience" required>{{ b.audience }}</textarea></div>
+      <div class="field"><label for="bt">Ton</label><textarea id="bt" name="brand_tone" required>{{ b.tone }}</textarea></div>
+      <div class="field"><label for="bg">Hedef</label><textarea id="bg" name="brand_goal" required>{{ b.goal }}</textarea></div>
+      <div class="field span2"><label for="bc">Varsayılan çağrı (CTA)</label><input id="bc" type="text" name="brand_cta" value="{{ b.cta_default }}" required></div>
+      <div class="field span2"><label for="bav">Kaçınılacaklar</label><textarea id="bav" name="brand_avoid" class="tall">{{ (b.avoid or [])|join('\n') }}</textarea>
+        <div class="hint">Her satıra bir kural.</div></div>
+    </div>
+  </section>
+
+  {% if b.services or b.pillars %}
+  <section class="card">
+    <div class="card-head"><h2>Hizmetler ve içerik sütunları</h2><span class="chip plain">config.yaml'dan</span></div>
+    <p class="muted small" style="margin-top:-6px">Bu yapı iç içe olduğu için <code>config.yaml</code> dosyasından düzenlenir; bot değişikliği 1 dakika içinde algılar.</p>
+    <div class="grid g2">
+      {% if b.services is mapping %}
+      <div>
+        {% for key, s in b.services.items() %}{% if s is mapping %}
+        <div style="margin-bottom:14px"><b>{{ s.name or key }}</b> {% if s.enabled == false %}<span class="chip">kapalı</span>{% endif %}
+          <div class="meta">{{ (s.services or [])|join(' · ') }}</div></div>
+        {% endif %}{% endfor %}
+      </div>
+      {% endif %}
+      {% if b.pillars is mapping %}
+      <div>
+        {% for key, p in b.pillars.items() %}
+        <div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between"><b>{{ key }}</b><span class="meta">%{{ p.weight if p is mapping else '' }}</span></div>
+          {% if p is mapping and p.weight %}<div class="bar" style="margin-top:6px"><i style="width: {{ p.weight }}%"></i></div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="sticky-save actions"><button class="btn btn-primary" type="submit">Kaydet</button></div>
+</form>
+{% endblock %}

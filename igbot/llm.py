@@ -72,25 +72,80 @@ class PostContent(BaseModel):
 
 
 # ---------------- Yardımcılar ----------------
+def _fmt_pillars(pillars: Any) -> str:
+    """Liste ya da {ad: {weight, topics}} sözlüğü kabul eder."""
+    if isinstance(pillars, dict):
+        out = []
+        for name, v in pillars.items():
+            if isinstance(v, dict):
+                w = f" (%{v['weight']})" if v.get("weight") else ""
+                topics = ", ".join(v.get("topics") or [])
+                out.append(f"{name}{w}: {topics}" if topics else f"{name}{w}")
+            else:
+                out.append(str(name))
+        return "\n  - " + "\n  - ".join(out) if out else "-"
+    return "; ".join(map(str, pillars or [])) or "-"
+
+
+def _fmt_services(services: Any) -> str:
+    if not isinstance(services, dict):
+        return ""
+    out = []
+    for v in services.values():
+        if not isinstance(v, dict) or v.get("enabled") is False:
+            continue
+        line = f"{v.get('name', '')}: {v.get('description', '')}".strip(": ")
+        if v.get("services"):
+            line += " Hizmetler: " + ", ".join(v["services"]) + "."
+        if v.get("technologies"):
+            line += " Teknolojiler: " + ", ".join(v["technologies"]) + "."
+        out.append(line)
+    return "\n  - " + "\n  - ".join(out) if out else ""
+
+
+def portfolio_type_list() -> List[str]:
+    """ideation.portfolio_types liste ya da {kategori: [türler]} sözlüğü olabilir."""
+    types = CFG.get("ideation", {}).get("portfolio_types") or []
+    if isinstance(types, dict):
+        return [f"{t} ({cat})" for cat, items in types.items() for t in (items or [])]
+    return [str(t) for t in types]
+
+
 def _brand_block() -> str:
     b = CFG["brand"]
-    return (
-        f"Marka: {b['name']} ({b['handle']})\n"
-        f"Alan: {b['niche']}\nHedef kitle: {b['audience']}\nTon: {b['tone']}\n"
-        f"Hedef: {b['goal']}\nVarsayılan CTA: {b['cta_default']}\n"
-        f"İçerik sütunları: {'; '.join(b['pillars'])}\n"
-        f"Kaçınılacaklar: {'; '.join(b['avoid'])}\n"
-        f"Dil: {b.get('language', 'tr')} (tüm çıktı bu dilde)"
-    )
+    lines = [f"Marka: {b['name']} ({b['handle']})", f"Alan: {b['niche']}"]
+    if b.get("positioning"):
+        lines.append(f"Konumlandırma: {b['positioning']}")
+    if b.get("slogan"):
+        lines.append(f"Slogan: {b['slogan']}")
+    svc = _fmt_services(b.get("services"))
+    if svc:
+        lines.append(f"Hizmet alanları:{svc}")
+    lines += [
+        f"Hedef kitle: {b['audience']}",
+        f"Ton: {b['tone']}",
+        f"Hedef: {b['goal']}",
+        f"Varsayılan CTA: {b['cta_default']}",
+        f"İçerik sütunları (yüzde = içerik dağılımındaki hedef pay):{_fmt_pillars(b.get('pillars'))}"
+        if isinstance(b.get("pillars"), dict) else f"İçerik sütunları: {_fmt_pillars(b.get('pillars'))}",
+        f"Kaçınılacaklar: {'; '.join(b.get('avoid') or [])}",
+        f"Dil: {b.get('language', 'tr')} (tüm çıktı bu dilde)",
+    ]
+    return "\n".join(lines)
 
 
-SYSTEM = (
+SYSTEM_BASE = (
     "Sen bir Instagram içerik stratejisti ve metin yazarısın. Görevin, verilen markanın "
     "sesiyle, ilham hesaplarındaki kalıplardan (konu, hook yapısı, format, yorumlarda sorulan sorular) "
     "öğrenerek ÖZGÜN gönderiler üretmek. İçeriği asla kopyalama; fikri dönüştür ve markanın "
     "uzmanlığına bağla. Yorumlardaki sorular, itirazlar ve talepler en değerli sinyaldir. "
-    "Uydurma istatistik kullanma.\n\n" + _brand_block()
+    "Uydurma istatistik kullanma.\n\n"
 )
+
+
+def system_prompt() -> str:
+    """Her çağrıda güncel config'ten üretilir (dashboard'dan yapılan değişiklikler anında geçerli olur)."""
+    return SYSTEM_BASE + _brand_block()
 
 
 def _inspiration_payload(rows) -> str:
@@ -142,7 +197,7 @@ def _parse(content: List[Dict[str, Any]], schema):
     resp = client().chat.completions.parse(
         model=llm["model"],
         messages=[
-            {"role": "system", "content": SYSTEM},
+            {"role": "system", "content": system_prompt()},
             {"role": "user", "content": content},
         ],
         response_format=schema,
@@ -186,11 +241,30 @@ def generate_ideas(
     else:
         content.append({"type": "text", "text": "Henüz ilham verisi yok; marka sütunlarına göre üret."})
 
+    # Dashboard'dan elle eklenen referanslar (link + not) — yön verici sinyal
+    refs = db.list_manual_references(10)
+    if refs:
+        content.append({
+            "type": "text",
+            "text": "EKİBİN ELLE EKLEDİĞİ REFERANSLAR (link açılamaz; başlık ve notları yön olarak kullan, kopyalama):\n"
+            + "\n".join(
+                f"- [{r['source'] or 'manuel'}] {r['title'] or '-'} — {r['url']}"
+                + (f"\n  Not: {r['notes']}" if r["notes"] else "")
+                for r in refs
+            ),
+        })
+    cats = ins_cfg.get("research_categories") or []
+    dist = CFG.get("posting", {}).get("content_distribution") or {}
+
     task = (
         f"\n\nGÖREV: {n} adet gönderi fikri üret.\n"
         f"- Yaklaşık %{int(idea_cfg.get('carousel_ratio', 0.7) * 100)} carousel, kalanı tek görsel.\n"
         f"- Carousel en fazla {idea_cfg.get('max_carousel_slides', 7)} slayt (kapak + içerik + CTA).\n"
         "- Fikirler farklı sütunlara dağılsın, birbirine benzemesin.\n"
+        + (f"- Hedef içerik dağılımı (yüzde): {json.dumps(dist, ensure_ascii=False)}; son başlıklara bakıp "
+           "geride kalan alana öncelik ver.\n" if dist else "")
+        + (f"- Araştırma/odak kategorileri: {', '.join(map(str, cats))}.\n" if cats else "")
+        +
         "- Tek görsel formatı tek güçlü mesaj ya da tek etkileyici tasarım örneği için.\n"
         "- İzleyici yalnızca tasarım bilgisi değil, TASARIM ÖRNEKLERİ de görmeli: her fikirde "
         "visual_concept ile somut, görsel olarak etkileyici örnekler tanımla (konsept logo, marka kimliği "
@@ -199,7 +273,7 @@ def generate_ideas(
         f"- Daha önce işlenen konuları tekrarlama: {json.dumps(recent, ensure_ascii=False)}"
     )
     if portfolio_n and not previous:
-        types = idea_cfg.get("portfolio_types", [])
+        types = portfolio_type_list()
         task += (
             f"\n- Bu fikirlerden TAM OLARAK {portfolio_n} tanesi format='portfolio' olsun: hayali bir müşteri için "
             "baştan sona konsept tasarım projesi. Proje türü seçenekleri: "

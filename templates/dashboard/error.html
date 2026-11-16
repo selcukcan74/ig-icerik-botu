@@ -1,0 +1,9 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Hata {{ code }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:520px">
+  <h1>{{ code }}</h1>
+  <p class="muted">{{ message }}</p>
+  <a class="btn btn-ghost" href="{{ url_for('index') }}">Genel bakışa dön</a>
+</div>
+{% endblock %}
