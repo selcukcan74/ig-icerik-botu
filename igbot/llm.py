@@ -227,22 +227,36 @@ def generate_ideas(
 def idea_from_brief(brief: Dict) -> Dict:
     """/tasarla sihirbazından gelen bilgilerle doğrudan bir fikir oluşturur (fikir onayı atlanır)."""
     fmt = brief.get("format", "portfolio")
+    own = bool(brief.get("own"))
+    head = "KENDİ MARKAMIZ İÇİN BRIEF" if own else "MÜŞTERİ BRIEF'İ"
     task = (
-        "MÜŞTERİ BRIEF'İ (Telegram /tasarla ile girildi):\n"
+        f"{head} (Telegram /tasarla ile girildi):\n"
         f"- Firma adı: {brief.get('name')}\n- Sektör: {brief.get('sector')}\n"
         f"- Renkler: {brief.get('colors') or 'Belirtilmedi — sektöre ve markaya uygun bir palet öner'}\n"
         f"- Tasarım konusu: {brief.get('topic')}\n- Ek notlar: {brief.get('notes') or '-'}\n\n"
-        f"GÖREV: Bu brief için format='{fmt}' olan TEK bir Instagram gönderisi fikri oluştur. Gönderi, yapılandırılmış marka hesabının "
-        "bu firma için yaptığı konsept tasarım çalışmasını sergileyecek. title 'Firma adı — konu' biçiminde olsun. "
-        "visual_concept'te gösterilecek parçaları sırala (ör. logo sunumu, kartvizit, tabela, bardak). key_points "
-        "tasarım kararları olsun (renk, tipografi, konsept). Firma adını ve verilen renkleri birebir kullan, değiştirme. "
-        "inspired_by boş liste olsun."
+        f"GÖREV: Bu brief için format='{fmt}' olan TEK bir Instagram gönderisi fikri oluştur. "
     )
+    if own:
+        task += (
+            "Bu GERÇEK bir marka içeriği: firma bizim kendi markamız ve gönderi kendi hesabımızda markamızı, "
+            "hizmetlerimizi ve görsel dilimizi tanıtacak. Hayali müşteri, konsept çalışma ya da portföy örneği DEĞİL; "
+            "'hayali', 'konsept', 'fictional', 'concept' gibi ifadeler kullanma. title 'Firma adı — konu' biçiminde olsun. "
+            "visual_concept'te gösterilecek parçaları sırala. key_points markanın vaadi, hizmetleri ve kitleye faydası "
+            "olsun. Firma adını ve verilen renkleri birebir kullan, değiştirme. inspired_by boş liste olsun."
+        )
+    else:
+        task += (
+            "Gönderi, yapılandırılmış marka hesabının bu firma için yaptığı konsept tasarım çalışmasını sergileyecek. title 'Firma adı — konu' "
+            "biçiminde olsun. visual_concept'te gösterilecek parçaları sırala (ör. logo sunumu, kartvizit, tabela, bardak). "
+            "key_points tasarım kararları olsun (renk, tipografi, konsept). Firma adını ve verilen renkleri birebir kullan, "
+            "değiştirme. inspired_by boş liste olsun."
+        )
     batch: IdeaBatch = _parse([{"type": "text", "text": task}], IdeaBatch)
     idea = batch.ideas[0].model_dump()
     idea["format"] = fmt
     idea["inspired_by"] = []
     idea["client"] = {k: brief.get(k, "") for k in ("name", "sector", "colors", "topic", "notes")}
+    idea["client"]["own"] = own
     return idea
 
 
@@ -251,13 +265,16 @@ def generate_content(idea: Dict, feedback: Optional[str] = None, previous: Optio
     vis = CFG.get("visuals", {})
     max_show = int(vis.get("max_per_post", 3)) if vis.get("enabled", True) else 0
     fmt = idea["format"]
+    client_info = idea.get("client")
+    own = bool(client_info and client_info.get("own"))
     if fmt == "portfolio":
         max_port = int(vis.get("max_per_portfolio", 6)) if vis.get("enabled", True) else 0
+        eyebrow = "marka adı ya da konu (ör. 'YENİ HİZMET')" if own else "'KONSEPT PROJE'"
         rules = (
-            f"PORTFÖY GÖNDERİSİ (konsept proje): {max_port + 2}-{max_port + 3} slayt. "
+            f"PORTFÖY GÖNDERİSİ ({'kendi markamız' if own else 'konsept proje'}): {max_port + 2}-{max_port + 3} slayt. "
             "brand_brief alanını mutlaka doldur. "
             f"Slayt 1: kind='showcase', projenin ANA görseli (marka kimliği için logo sunum sayfası; post seti için "
-            f"3x3 Instagram profil grid mockup'ı), eyebrow='KONSEPT PROJE', title=proje/marka adı. "
+            f"3x3 Instagram profil grid mockup'ı), eyebrow={eyebrow}, title=proje/marka adı. "
             f"Ardından {max(1, max_port - 1)}-{max_port - 1} adet 'showcase' slaytı: her biri projenin bir parçası "
             "(mockup, tekil post, ambalaj, tabela…); title 1-3 kelime (ör. 'Kartvizit', 'Post 01'), body en fazla 12 kelime. "
             "Araya en fazla 1 'list' slaytı (renk paleti, tipografi, konsept kararları). Son slayt 'cta' "
@@ -266,8 +283,13 @@ def generate_content(idea: Dict, feedback: Optional[str] = None, previous: Optio
             "tanımlı). Sonraki slaytlar slayt 1'in görselini REFERANS alarak üretilecek: 'the same brand from the "
             "reference image' diye başla, aynı logo/renk/tipografiyi uygulandığı yeni yüzeyi tarif et. Dikey 2:3, "
             "alt %25 sade. Görsel içi metin yalnızca marka adı ve çok kısa İngilizce/Latin kelimeler. "
-            "Caption: proje hikayesi (brief → konsept → kararlar), bunun hayali bir konsept çalışma olduğunu "
-            "belirt, sonda DM CTA. "
+            + (
+                "Caption: markamızın kendi tanıtımı (ne yapıyoruz, kime, nasıl fayda sağlıyoruz); konsept/hayali "
+                "çalışma olduğunu SÖYLEME, sonda DM CTA. "
+                if own else
+                "Caption: proje hikayesi (brief → konsept → kararlar), bunun hayali bir konsept çalışma olduğunu "
+                "belirt, sonda DM CTA. "
+            )
         )
         max_show = max_port
     elif fmt == "single":
@@ -296,8 +318,19 @@ def generate_content(idea: Dict, feedback: Optional[str] = None, previous: Optio
             "gerekiyorsa yalnızca kısa hayali marka adı. Referans görsellerin stil özelliklerini (kompozisyon, ışık, "
             "malzeme, tipografi karakteri) uygula ama hiçbir tasarımı kopyalama. "
         )
-    client_info = idea.get("client")
-    if client_info:
+    if own:
+        rules += (
+            "\nKENDİ MARKAMIZ: Bu gönderi GERÇEK; kendi markamız "
+            f"\"{client_info['name']}\" için kendi hesabımızda paylaşılacak tanıtım içeriği (yazımını değiştirme). "
+            f"Sektör/hizmet: {client_info['sector']}. "
+            f"Renkler: {client_info['colors'] or 'marka renklerimizi kullan ve brand_brief içinde hex kodlarıyla yaz'}. "
+            f"Ek notlar: {client_info['notes'] or '-'}. brand_brief alanını HER formatta doldur (renkler hex kodlarıyla). "
+            "Tüm image_prompt'larda marka adını ve renkleri aynen kullan; 'fictional', 'concept', 'mock brand' gibi "
+            "ifadeler YAZMA. Slaytlarda, eyebrow'larda ve caption'da 'konsept', 'hayali', 'konsept proje', "
+            "'konsept çalışma' ifadelerini KULLANMA; yukarıdaki kurallardan bununla çelişen varsa bu kural geçerlidir. "
+            "Caption birinci çoğul şahısla ('biz') markamızı ve hizmetimizi anlatsın; sonda DM CTA. "
+        )
+    elif client_info:
         rules += (
             "\nMÜŞTERİ ÇALIŞMASI: Bu gönderi gerçek bir brief'e dayanıyor. Marka adı TAM OLARAK "
             f"\"{client_info['name']}\" (yazımını değiştirme, hayali marka uydurma). Sektör: {client_info['sector']}. "
@@ -340,6 +373,7 @@ def generate_content(idea: Dict, feedback: Optional[str] = None, previous: Optio
                 sl["kind"], sl["image_prompt"] = "content", ""
     data["portfolio"] = fmt == "portfolio"
     data["client_name"] = client_info["name"] if client_info else ""
+    data["own"] = own
     if not data["portfolio"] and not client_info:
         data["brand_brief"] = ""
     return data

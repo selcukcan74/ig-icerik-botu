@@ -124,7 +124,10 @@ async def design_draft(app: Application, draft_id: int, feedback: Optional[str] 
     try:
         content = await asyncio.to_thread(llm.generate_content, idea, feedback, prev)
         await generate_showcase_images(content, status_msg)
-        tag = "Konsept proje" if content.get("portfolio") else "Konsept tasarım"
+        if content.get("own"):
+            tag = CFG["brand"]["name"]  # kendi markamız: "Konsept" etiketi basılmaz
+        else:
+            tag = "Konsept proje" if content.get("portfolio") else "Konsept tasarım"
         images = await render.render_slides(draft_id, content["slides"], tag)
         caption = llm.build_caption(content)
         db.update_draft(
@@ -303,6 +306,8 @@ HELP = (
     "<b>INSTAGRAM İÇERİK BOTU 🚀</b>\n\n"
     "/fikir — Şimdi taslak fikir üret (varsayılan ayardaki sayı)\n"
     "/tasarla — Firma bilgilerini gir, ona özel tasarım + açıklama hazırlansın\n"
+    "/tasarla #biz — Kendi markamız için gerçek tanıtım tasarımı (konsept değil). "
+    "Sihirbazın herhangi bir adımında #biz yazmak da olur.\n"
     "/tara — İlham hesaplarını şimdi tara\n"
     "/ilham &lt;link&gt; — Tek bir gönderiyi ilham havuzuna ekle (ya da sadece linki gönder)\n"
     "/kuyruk — Bekleyen ve planlanan içerikler\n"
@@ -403,8 +408,10 @@ TOPICS = [
     "Web / uygulama arayüzü",
 ]
 BRIEF_STEPS = ["name", "sector", "colors", "topic", "format", "notes"]
+# Briefin herhangi bir yerinde bu etiket geçerse tasarım KENDİ markamız için (gerçek içerik) üretilir
+OWN_TAG = re.compile(r"(?<!\w)#(biz|kendi|kendimiz)(?!\w)", re.IGNORECASE)
 BRIEF_QUESTIONS = {
-    "name": "1/6 · <b>Firma adı</b> ne?",
+    "name": "1/6 · <b>Firma adı</b> ne?\n<i>Kendi markamız için tasarlıyorsan <b>#biz</b> yaz.</i>",
     "sector": "2/6 · <b>Sektör</b> ne? (ör. üçüncü nesil kahveci, diş kliniği, butik otel)",
     "colors": "3/6 · <b>Renkler</b>? (ör. “lacivert + altın”, “#0B1F3A, #C9A85A”)\nBana bırakmak için “-” yaz.",
     "topic": "4/6 · <b>Tasarım konusu</b> ne? Seç ya da kendin yaz:",
@@ -427,8 +434,11 @@ async def ask_brief_step(message, brief: Dict) -> None:
         await message.reply_text(BRIEF_QUESTIONS[step], parse_mode=ParseMode.HTML, reply_markup=KB(rows + [CANCEL_ROW]))
     elif step == "confirm":
         fmt = "Carousel proje" if brief["format"] == "portfolio" else "Tek görsel"
+        kind = ("🏢 <b>Kendi markamız</b> — gerçek tanıtım içeriği" if brief.get("own")
+                else "👤 Müşteri / konsept çalışma <i>(kendi markamız içinse notlara #biz yaz)</i>")
         text = (
             "<b>Brief özeti</b>\n\n"
+            f"{kind}\n"
             f"🏷 Firma: {e(brief['name'])}\n🏭 Sektör: {e(brief['sector'])}\n"
             f"🎨 Renkler: {e(brief['colors'] or 'bana bırakıldı')}\n🧩 Konu: {e(brief['topic'])}\n"
             f"📐 Format: {fmt}\n📝 Notlar: {e(brief['notes'] or '-')}"
@@ -442,9 +452,20 @@ async def ask_brief_step(message, brief: Dict) -> None:
         await message.reply_text(BRIEF_QUESTIONS[step], parse_mode=ParseMode.HTML, reply_markup=KB([CANCEL_ROW]))
 
 
+def mark_own(brief: Dict, text: str) -> str:
+    """#biz etiketini yakalar, briefi 'kendi markamız' moduna alır ve etiketi metinden çıkarır."""
+    if OWN_TAG.search(text):
+        brief["own"] = True
+        text = OWN_TAG.sub("", text).strip()
+    return text
+
+
 def advance_brief(brief: Dict, value: str) -> None:
     step = brief["step"]
     v = value.strip()
+    own_defaults = {"name": CFG["brand"]["name"], "sector": CFG["brand"]["niche"]}
+    if brief.get("own") and v in ("", "-") and step in own_defaults:
+        v = own_defaults[step]  # kendi markamızda boş bırakılan ad/sektör config'den gelir
     brief[step] = "" if v == "-" and step in ("colors", "notes") else v
     i = BRIEF_STEPS.index(step)
     brief["step"] = BRIEF_STEPS[i + 1] if i + 1 < len(BRIEF_STEPS) else "confirm"
@@ -452,9 +473,17 @@ def advance_brief(brief: Dict, value: str) -> None:
 
 async def cmd_tasarla(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     ctx.user_data.pop("await", None)
-    ctx.user_data["brief"] = {"step": "name"}
-    await update.message.reply_text("🎨 Yeni tasarım. 6 kısa soru soracağım (iptal: /iptal).")
-    await ask_brief_step(update.message, ctx.user_data["brief"])
+    brief = {"step": "name", "own": False}
+    ctx.user_data["brief"] = brief
+    if OWN_TAG.search(" ".join(ctx.args or [])):  # "/tasarla #biz"
+        brief["own"] = True
+        await update.message.reply_text(
+            "🏢 Kendi markamız için tasarım (gerçek içerik, konsept değil). İptal: /iptal\n"
+            "Firma adı ve sektörü config'teki markadan almak için “-” yazabilirsin."
+        )
+    else:
+        await update.message.reply_text("🎨 Yeni tasarım. 6 kısa soru soracağım (iptal: /iptal).")
+    await ask_brief_step(update.message, brief)
 
 
 async def cmd_iptal(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
@@ -464,13 +493,21 @@ async def cmd_iptal(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def brief_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE, brief: Dict) -> None:
     text = (update.message.text or "").strip()
+    was_own = brief.get("own")
+    text = mark_own(brief, text)
+    if brief.get("own") and not was_own:
+        await update.message.reply_text("🏢 Tamam, bu tasarım <b>kendi markamız</b> için gerçek içerik olarak üretilecek.",
+                                        parse_mode=ParseMode.HTML)
+        if brief["step"] == "name" and not text:
+            text = "-"  # yalnızca #biz yazıldıysa marka adı config'ten
     if brief["step"] == "confirm":
         await update.message.reply_text("Özetteki ✅ Tasarla ya da ❌ Vazgeç butonunu kullan.")
         return
     if brief["step"] == "format":
         await update.message.reply_text("Lütfen butonlardan birini seç.")
         return
-    if not text or (text == "-" and brief["step"] in ("name", "sector", "topic")):
+    required = ("topic",) if brief.get("own") else ("name", "sector", "topic")
+    if not text or (text == "-" and brief["step"] in required):
         await update.message.reply_text("Bu alan gerekli, lütfen yaz.")
         return
     advance_brief(brief, text[:500])
